@@ -6,30 +6,47 @@ volatile unsigned long pulseCount = 0;
 
 ModbusRTU mb;
 
-void countPulse() {
+void countPulse()
+{
   pulseCount++;
 }
 
-const int sampleInterval = 100; // ms
+const int sampleInterval = 200; // ms
 const int sampleCount = 10;     // number of samples for rolling average
 unsigned long pulseSamples[sampleCount] = {0};
 int currentSample = 0;
 
-void setup() {
-  Serial.begin(115200);
-  pinMode(windPin, INPUT_PULLDOWN);
-  attachInterrupt(digitalPinToInterrupt(windPin), countPulse, RISING);
-
-  Serial1.begin(115200);
-  mb.begin(&Serial1, 3);
-  mb.slave(1);
-  mb.addHreg(0, 0, 10);
+// Callback when a holding register is read
+bool cbGet(uint16_t address, uint16_t &value)
+{
+  Serial.print("Modbus read request for Hreg address: ");
+  Serial.println(address);
+  return true; // Continue normal processing
 }
 
-void loop() {
+void setup()
+{
+  Serial.begin(9600);
+  pinMode(windPin, INPUT_PULLDOWN);
+  pinMode(12, OUTPUT);
+  attachInterrupt(digitalPinToInterrupt(windPin), countPulse, RISING);
+
+  Serial1.begin(9600);
+  mb.begin(&Serial1, 12);
+  mb.slave(99);
+
+  // Add holding registers and set read callback
+  mb.addHreg(0, 0, 10);
+  mb.onGetHreg(0, cbGet);
+}
+
+void loop()
+{
+  mb.task();
   static unsigned long lastSampleTime = 0;
 
-  if (millis() - lastSampleTime >= sampleInterval) {
+  if (millis() - lastSampleTime >= sampleInterval)
+  {
     lastSampleTime += sampleInterval;
 
     // Read and reset pulse count
@@ -44,13 +61,15 @@ void loop() {
 
     // Compute rolling sum and average
     unsigned long totalPulses = 0;
-    for (int i = 0; i < sampleCount; i++) {
+    for (int i = 0; i < sampleCount; i++)
+    {
       totalPulses += pulseSamples[i];
     }
 
     float pulsesPerSecond = totalPulses * (1000.0 / (sampleInterval * sampleCount));
     float windSpeed = 0;
-    if (pulsesPerSecond > 0) {
+    if (pulsesPerSecond > 0)
+    {
       windSpeed = 0.0664 * pulsesPerSecond + 0.5019;
     }
 
@@ -60,6 +79,4 @@ void loop() {
     Serial.print("Wind speed (m/s): ");
     Serial.println(windSpeed, 2);
   }
-
-  mb.task();
 }
