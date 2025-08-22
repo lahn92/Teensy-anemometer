@@ -52,11 +52,10 @@ void loop()
     float windSpeed = 0;
     if (pulsesPerSecond > 0)
     {
-      windSpeed = 0.0664 * pulsesPerSecond + 0.5019;
+      windSpeed = 0.0664 * pulsesPerSecond + 0.5019; // kaliberet op mod sig selv med konstant luftstrøm før adskilleses af kommicielt anemometer.
     }
 
     // Send over Serial1 (m/s, 2 decimal places)
-    Serial1.print("Wind:");
     Serial1.println(windSpeed, 2);
 
     // Debug print on USB serial
